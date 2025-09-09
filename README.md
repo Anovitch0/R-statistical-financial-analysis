@@ -1,6 +1,6 @@
-# alpine-financeR-pro — Projet R *senior* (finance + stats) 
+# alpine-financeR-pro — Projet R (finance + stats) 
 
-> Version **améliorée** pour recruteurs/équipes stats : validation rigoureuse (VaR/ES), CV glasso, OOS backtests,
+> validation rigoureuse (VaR/ES), CV glasso, OOS backtests,
 > rapport Quarto pro, tests unitaires, style clean et reproductible.
 
 ## Points forts
@@ -30,4 +30,3 @@ quarto::quarto_render("reports/analysis_pro.qmd")
 
 ---
 
-© MIT. Utilisation éducative/démo.
