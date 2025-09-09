@@ -1,0 +1,70 @@
+---
+title: "Analyse financière — *pro*"
+format:
+  html:
+    toc: true
+    code-fold: true
+execute-dir: project
+---
+
+```{r}
+proj_root <- normalizePath("..", winslash = "/", mustWork = TRUE)
+f_proj <- function(...) file.path(proj_root, ...)
+
+source(f_proj("scripts/00_bootstrap.R"))
+source(f_proj("R/00_utils.R"))
+source(f_proj("R/30_dependence.R"))
+source(f_proj("R/31_glasso_cv.R"))
+source(f_proj("R/50_portfolio.R"))
+source(f_proj("R/51_portfolio_shrink.R"))
+source(f_proj("R/52_portfolio_oos.R"))
+source(f_proj("R/42_var_es_backtests.R"))
+theme_set(theme_alpine())
+
+prices <- as.data.table(arrow::read_parquet(f_proj("data/processed/prices.parquet")))
+```
+
+# Executive summary
+
+```{r}
+bt <- var_es_backtests(prices, level = 0.975, window = 252)
+dep <- glasso_cv(prices, rhos = c(0.005,0.01,0.02,0.03,0.05))
+w_hrp  <- hrp_alloc_shrunk(dep$cov, alpha = 0.15)
+neff   <- 1/sum(w_hrp^2); maxw <- max(w_hrp)
+knitr::kable(data.frame(
+  Metric = c("VaR97.5% LRuc p-val", "VaR97.5% LRind p-val", "VaR97.5% LRcc p-val",
+             "HRP N_effectif", "HRP poids max", "Glasso rho*"),
+  Value  = c(round(bt$LRuc$p.value,3), round(bt$LRind$p.value,3), round(bt$LRcc$p.value,3),
+             round(neff,2), round(maxw,3), dep$rho)
+))
+```
+
+# Corrélations & réseau (glasso, CV)
+
+```{r}
+S <- dep$cor
+pheatmap::pheatmap(S, main = "Corrélations (pleines)")
+plot(igraph::graph_from_adjacency_matrix((abs(dep$precision)>1e-6)*1, "undirected"), vertex.size=6)
+```
+
+# Portefeuille HRP (shrink) vs OOS
+
+```{r}
+oos <- oos_backtest(prices, method = "HRP_shrunk", window = 756, alpha = 0.15, costs_bps = 5)
+library(PerformanceAnalytics); library(xts)
+spy <- dcast(prices[,.(date,symbol,ret_d)], date~symbol, value.var="ret_d")[, c("date","SPY")]
+R <- xts::xts(oos$returns, order.by = zoo::index(oos$returns))
+chart.CumReturns(merge(R, xts::xts(spy$SPY, as.Date(spy$date))), legend.loc = "topleft")
+```
+
+# Backtesting VaR/ES
+
+```{r}
+data.table::fread(f_proj("tables/var_backtests_spy.csv"))
+```
+
+# Méthodologie (tests + critères)
+- **Glasso ρ*** par CV (log-vraisemblance sur validation temporelle).  
+- **VaR 97.5%** (fenêtre 252) : **Kupiec** (couverture), **Christoffersen** (indépendance), **LRcc**.  
+- **HRP** avec **shrinkage α** pour contrôler la concentration (N_effectif).  
+- **OOS** : rebal mensuel, **coûts bps**, turnover implicite.

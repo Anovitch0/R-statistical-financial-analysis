@@ -1,0 +1,24 @@
+tickers:
+  - SPY
+  - QQQ
+  - TLT
+  - GLD
+  - EEM
+  - IWM
+  - AAPL
+  - MSFT
+  - NVDA
+dates:
+  start: "2012-01-01"
+  end: null
+macro_fred:
+  - "UNRATE"
+  - "CPIAUCSL"
+  - "DGS10"
+hrp:
+  alpha: 0.15        # shrinkage diag pour diversification
+glasso:
+  rhos: [0.005, 0.01, 0.02, 0.03, 0.05]
+oos:
+  window: 756        # ~3 ans
+  costs_bps: 5       # coûts de transaction (aller-retour) en bps
